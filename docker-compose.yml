@@ -7,3 +7,8 @@ services:
     stdin_open: true
     ports:
       - "8081:8081"
+  
+  redis:
+    image: "redis:latest"
+      ports:
+        - "6379:6379"
