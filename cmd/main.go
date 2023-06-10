@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ryohei1216/go-redis-pub-sub/client/redis"
+	"github.com/ryohei1216/go-redis-pub-sub/redis"
 )
 
 func main() {
