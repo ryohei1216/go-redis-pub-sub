@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/99designs/gqlgen v0.17.34
+	github.com/dgryski/trifles v0.0.0-20200323201526-dd97f9abfb48
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/vektah/gqlparser/v2 v2.5.4
 )

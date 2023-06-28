@@ -7,18 +7,64 @@ package graph
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
 
+	"github.com/dgryski/trifles/uuid"
 	"github.com/ryohei1216/go-redis-pub-sub/graph/model"
 )
 
-// CreateTodo is the resolver for the createTodo field.
-func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
+// PostMessage is the resolver for the postMessage field.
+func (r *mutationResolver) PostMessage(ctx context.Context, user string, text string) (*model.Message, error) {
+	message := &model.Message{
+		ID:        uuid.UUIDv4(),
+		CreatedAt: time.Now().UTC(),
+		User:      user,
+		Text:      text,
+	}
+
+	// 投稿されたメッセージを保存し、subscribeしている全てのコネクションにブロードキャスト
+	r.mutex.Lock()
+	r.messages = append(r.messages, message)
+	for _, ch := range r.subscribers {
+		ch <- message
+	}
+	r.mutex.Unlock()
+
+	return message, nil
 }
 
-// Todos is the resolver for the todos field.
-func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+// Messages is the resolver for the messages field.
+func (r *queryResolver) Messages(ctx context.Context) ([]*model.Message, error) {
+	panic(fmt.Errorf("not implemented: Messages - messages"))
+}
+
+// MessagePosted is the resolver for the messagePosted field.
+func (r *subscriptionResolver) MessagePosted(ctx context.Context, user string) (<-chan *model.Message, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if _, ok := r.subscribers[user]; ok {
+		err := fmt.Errorf("`%s` has already been subscribed.", user)
+		log.Print(err.Error())
+		return nil, err
+	}
+
+	// チャンネルを作成し、リストに登録
+	ch := make(chan *model.Message, 1)
+	r.subscribers[user] = ch
+	log.Printf("`%s` has been subscribed!", user)
+
+	// コネクションが終了したら、このチャンネルを削除する
+	go func() {
+		<-ctx.Done()
+		r.mutex.Lock()
+		delete(r.subscribers, user)
+		r.mutex.Unlock()
+		log.Printf("`%s` has been unsubscribed.", user)
+	}()
+
+	return ch, nil
 }
 
 // Mutation returns MutationResolver implementation.
@@ -27,5 +73,9 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// Subscription returns SubscriptionResolver implementation.
+func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionResolver{r} }
+
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type subscriptionResolver struct{ *Resolver }
