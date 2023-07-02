@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -23,13 +24,13 @@ func (r *mutationResolver) PostMessage(ctx context.Context, user string, text st
 		Text:      text,
 	}
 
-	// 投稿されたメッセージを保存し、subscribeしている全てのコネクションにブロードキャスト
-	r.mutex.Lock()
-	r.messages = append(r.messages, message)
-	for _, ch := range r.subscribers {
-		ch <- message
+	messageJson, _ := json.Marshal(message)
+
+	// messageをRedisにpublish
+	err := r.pubSubService.Publish(ctx, "messages", messageJson)
+	if err != nil {
+		return nil, err
 	}
-	r.mutex.Unlock()
 
 	return message, nil
 }

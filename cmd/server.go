@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -12,9 +13,11 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/websocket"
 	"github.com/ryohei1216/go-redis-pub-sub/graph"
+	"github.com/ryohei1216/go-redis-pub-sub/redis"
+	"github.com/ryohei1216/go-redis-pub-sub/service"
 )
 
-const defaultPort = "8080"
+const defaultPort = "8081"
 
 func main() {
 	port := os.Getenv("PORT")
@@ -22,8 +25,16 @@ func main() {
 		port = defaultPort
 	}
 
+	ctx := context.Background()
+	redisClient := redis.New(ctx)
+
+	pubSubService := service.NewPubSubService(redisClient)
+
+	resolver := graph.NewResolver(pubSubService)
+	resolver.SubscribeRedis(ctx)
+
 	srv := handler.New(
-		graph.NewExecutableSchema(graph.Config{Resolvers: graph.NewResolver()}),
+		graph.NewExecutableSchema(graph.Config{Resolvers: resolver}),
 	)
 
 	// Subscription を使うには `transport.POST` と `transport.Websocket` をトランスポートとして追加すればよい

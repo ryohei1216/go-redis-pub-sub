@@ -42,7 +42,5 @@ func (s *pubSubService) Publish(ctx context.Context, channel string, payload any
 func (s *pubSubService) Subscribe(ctx context.Context, channel string) *redis.PubSub {
 	pubSub := s.client.Subscribe(ctx, channel)
 
-	defer pubSub.Close()
-
 	return pubSub
 }

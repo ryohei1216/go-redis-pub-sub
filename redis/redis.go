@@ -1,13 +1,24 @@
 package redis
 
-import go_redis "github.com/go-redis/redis/v8"
+import (
+	"context"
+	"log"
 
-func New() *go_redis.Client {
+	go_redis "github.com/go-redis/redis/v8"
+)
+
+func New(ctx context.Context) *go_redis.Client {
 	client := go_redis.NewClient(&go_redis.Options{
-		Addr:     "redis:6379",
+		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+
+	err := client.Ping(ctx).Err()
+
+	if err != nil {
+		log.Fatal("failed to connect redis", err)
+	}
 
 	return client
 }
